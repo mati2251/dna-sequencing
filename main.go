@@ -122,8 +122,8 @@ func getSolutions(n node) []node {
 		return append(nodes, n)
 	}
 	for _, next := range n.next {
-		next.value = n.value + next.value[len(next.value)-1:]
-		nodes = append(nodes, getSolutions(*next)...)
+    new_node := node{value: n.value + next.value[wordSize-1:], next: next.next, prev: []*node{}, used: false, merged: false}
+		nodes = append(nodes, getSolutions(new_node)...)
 	}
 	return nodes
 }
@@ -173,7 +173,7 @@ func main() {
 	for _, n := range started {
 		solutions := getSolutions(*n)
 		for _, s := range solutions {
-			fmt.Printf("%s\n", s.value)
+				fmt.Printf("%d: %s\n", len(s.value), s.value)
 		}
 	}
 }
