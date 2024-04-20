@@ -51,6 +51,18 @@ func nodes(lines []string) []*node {
 		n.next = nextMap[n.value[1:]]
 		n.prev = prevMap[n.value[:len(n.value)-1]]
 	}
+	for _, n := range nodes {
+		for i, next := range n.next {
+			if next.value == n.value {
+				n.next = append(n.next[:i], n.next[i+1:]...)
+				for j, prev := range n.prev {
+					if prev.value == n.value {
+						n.prev = append(n.prev[:j], n.prev[j+1:]...)
+					}
+				}
+			}
+		}
+	}
 	return nodes
 }
 
@@ -109,23 +121,25 @@ func resetUsed(nodes []*node) {
 func getStarted(nodes []*node) []*node {
 	started := []*node{}
 	for _, n := range nodes {
-		if len(n.prev) == 0 {
+		if len(n.prev) == 0 && len(n.next) > 0 {
 			started = append(started, n)
 		}
 	}
 	return started
 }
 
-func getSolutions(n node) []node {
-	nodes := []node{}
+func getSolutions(n node, curr string) []string {
+  n.used = true
+  solutions := []string{}
 	if len(n.next) == 0 {
-		return append(nodes, n)
+		return append(solutions, curr)
 	}
 	for _, next := range n.next {
-    new_node := node{value: n.value + next.value[wordSize-1:], next: next.next, prev: []*node{}, used: false, merged: false}
-		nodes = append(nodes, getSolutions(new_node)...)
+    new_curr := curr + n.value[wordSize-1:]
+		solutions = append(solutions, getSolutions(*next, new_curr)...)
 	}
-	return nodes
+  n.used = false
+	return solutions 
 }
 
 func main() {
@@ -168,12 +182,12 @@ func main() {
 	for _, n := range started {
 		fmt.Println(n.value)
 	}
-	fmt.Println(len(merged_nodes))
-	fmt.Println(len(started))
 	for _, n := range started {
-		solutions := getSolutions(*n)
+		solutions := getSolutions(*n, n.value)
 		for _, s := range solutions {
-				fmt.Printf("%d: %s\n", len(s.value), s.value)
+			if len(s) >= 209 {
+				fmt.Printf("%d: %s\n", len(s), s)
+			}
 		}
 	}
 }
