@@ -133,7 +133,7 @@ func getSolutions(n *node, curr string) []string {
 	solutions := []string{}
 	n.used = true
 	if len(n.next) == 0 {
-    n.used = false
+		n.used = false
 		return append(solutions, curr)
 	}
 	for _, next := range n.next {
@@ -146,6 +146,68 @@ func getSolutions(n *node, curr string) []string {
 	}
 	n.used = false
 	return solutions
+}
+
+func incresaOffset(nodes []*node, offset int) {
+	if offset == 0 {
+		return
+	}
+	prevMap := make(map[string][]*node)
+	nextMap := make(map[string][]*node)
+	for _, n := range nodes {
+		size := len(n.value)
+		end := n.value[size-wordSize+offset+1:]
+		begin := n.value[:wordSize-1-offset]
+		if _, ok := prevMap[end]; !ok {
+			prevMap[end] = []*node{}
+		}
+		if _, ok := nextMap[begin]; !ok {
+			nextMap[begin] = []*node{}
+		}
+		prevMap[end] = append(prevMap[end], n)
+		nextMap[begin] = append(nextMap[begin], n)
+	}
+	for _, n := range nodes {
+		size := len(n.value)
+		nexts := nextMap[n.value[size-wordSize+offset+1:]]
+		prevs := prevMap[n.value[:wordSize-1-offset]]
+		for _, next := range nexts {
+			add := true
+			for _, presentNext := range n.next {
+				if presentNext.value == next.value {
+					add = false
+				}
+			}
+      if add {
+          n.next = append(n.next, next)
+      }
+		}
+    for _, prev := range prevs {
+      add := true
+      for _, presentPrev := range n.prev {
+        if presentPrev.value == prev.value {
+          add = false
+        }
+      } 
+      if add {
+        n.prev = append(n.prev, prev)
+      }
+    }
+	}
+}
+
+func printNodes(nodes []*node) {
+	for i, n := range nodes {
+		fmt.Printf("%d: %s -> ", i, n.value)
+		for _, next := range n.next {
+			fmt.Printf("%s ", next.value)
+		}
+		fmt.Print(" <- ")
+		for _, prev := range n.prev {
+			fmt.Printf("%s ", prev.value)
+		}
+		fmt.Println()
+	}
 }
 
 func main() {
@@ -166,50 +228,37 @@ func main() {
 	}
 	nodes := nodes(lines)
 
-	if os.Getenv("DNA_DEBUG") == "1" {
-		for _, n := range nodes {
-			fmt.Printf("%s -> ", n.value)
-			for _, next := range n.next {
-				fmt.Printf("%s ", next.value)
-			}
-			fmt.Print(" <- ")
-			for _, prev := range n.prev {
-				fmt.Printf("%s ", prev.value)
-			}
-			fmt.Println()
-		}
+	debug := os.Getenv("DNA_DEBUG") == "1"
+	if debug {
+		printNodes(nodes)
 	}
 
 	merged_nodes := mergeAll(nodes, []*node{})
-	started := getStarted(merged_nodes)
 
-	if os.Getenv("DNA_DEBUG") == "1" {
+	if debug {
 		fmt.Println("Merging...")
-		for i, n := range merged_nodes {
-			if len(n.next) != 0 || len(n.prev) != 0 {
-				fmt.Printf("%d: %s -> ", i, n.value)
-				for _, next := range n.next {
-					fmt.Printf("%s ", next.value)
-				}
-				fmt.Print(" <- ")
-				for _, prev := range n.prev {
-					fmt.Printf("%s ", prev.value)
-				}
-				fmt.Println()
+		printNodes(merged_nodes)
+	}
+
+	for offset := 0; offset != wordSize; offset++ {
+		incresaOffset(merged_nodes, offset)
+		started := getStarted(merged_nodes)
+		if debug {
+			fmt.Printf("Iteration %d\n", offset)
+			printNodes(merged_nodes)
+			fmt.Println("Started..")
+			for _, n := range started {
+				fmt.Println(n.value)
 			}
 		}
-		fmt.Println("Started..")
+
 		for _, n := range started {
-			fmt.Println(n.value)
-		}
-	}
-	fmt.Println("Solutions..")
-	for _, n := range started {
-		resetUsed(nodes)
-		solutions := getSolutions(n, n.value)
-		for _, s := range solutions {
-			if len(s) >= endSize {
-				fmt.Printf("%d: %s\n", len(s), s)
+			resetUsed(nodes)
+			solutions := getSolutions(n, n.value)
+			for _, s := range solutions {
+				if len(s) >= endSize {
+					fmt.Printf("Solution %d: %s\n", len(s), s)
+				}
 			}
 		}
 	}
