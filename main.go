@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strconv"
 )
 
 var wordSize int
@@ -128,64 +129,86 @@ func getStarted(nodes []*node) []*node {
 	return started
 }
 
-func getSolutions(n node, curr string) []string {
-  n.used = true
-  solutions := []string{}
+func getSolutions(n *node, curr string) []string {
+	solutions := []string{}
+	n.used = true
 	if len(n.next) == 0 {
+    n.used = false
 		return append(solutions, curr)
 	}
 	for _, next := range n.next {
-    new_curr := curr + n.value[wordSize-1:]
-		solutions = append(solutions, getSolutions(*next, new_curr)...)
+		if next.used {
+			solutions = append(solutions, curr)
+		} else {
+			new_curr := curr + next.value[wordSize-1:]
+			solutions = append(solutions, getSolutions(next, new_curr)...)
+		}
 	}
-  n.used = false
-	return solutions 
+	n.used = false
+	return solutions
 }
 
 func main() {
-	if len(os.Args) != 2 {
-		fmt.Printf("Usage: %s <filename>", os.Args[0])
+	if len(os.Args) != 3 {
+		fmt.Printf("Usage: %s <filename> <end-size>", os.Args[0])
 		return
 	}
 	filename := os.Args[1]
+	endSize, err := strconv.Atoi(os.Args[2])
+	if err != nil {
+		fmt.Println("Error parsing end-size")
+		return
+	}
 	lines, err := readLines(filename)
 	if err != nil {
 		fmt.Println("Error reading file")
 		return
 	}
 	nodes := nodes(lines)
-	for _, n := range nodes {
-		fmt.Printf("%s -> ", n.value)
-		for _, next := range n.next {
-			fmt.Printf("%s ", next.value)
+
+	if os.Getenv("DNA_DEBUG") == "1" {
+		for _, n := range nodes {
+			fmt.Printf("%s -> ", n.value)
+			for _, next := range n.next {
+				fmt.Printf("%s ", next.value)
+			}
+			fmt.Print(" <- ")
+			for _, prev := range n.prev {
+				fmt.Printf("%s ", prev.value)
+			}
+			fmt.Println()
 		}
-		fmt.Print(" <- ")
-		for _, prev := range n.prev {
-			fmt.Printf("%s ", prev.value)
-		}
-		fmt.Println()
 	}
-	fmt.Println("Merging...")
+
 	merged_nodes := mergeAll(nodes, []*node{})
-	for i, n := range merged_nodes {
-		fmt.Printf("%d: %s -> ", i, n.value)
-		for _, next := range n.next {
-			fmt.Printf("%s ", next.value)
-		}
-		fmt.Print(" <- ")
-		for _, prev := range n.prev {
-			fmt.Printf("%s ", prev.value)
-		}
-		fmt.Println()
-	}
 	started := getStarted(merged_nodes)
-	for _, n := range started {
-		fmt.Println(n.value)
+
+	if os.Getenv("DNA_DEBUG") == "1" {
+		fmt.Println("Merging...")
+		for i, n := range merged_nodes {
+			if len(n.next) != 0 || len(n.prev) != 0 {
+				fmt.Printf("%d: %s -> ", i, n.value)
+				for _, next := range n.next {
+					fmt.Printf("%s ", next.value)
+				}
+				fmt.Print(" <- ")
+				for _, prev := range n.prev {
+					fmt.Printf("%s ", prev.value)
+				}
+				fmt.Println()
+			}
+		}
+		fmt.Println("Started..")
+		for _, n := range started {
+			fmt.Println(n.value)
+		}
 	}
+	fmt.Println("Solutions..")
 	for _, n := range started {
-		solutions := getSolutions(*n, n.value)
+		resetUsed(nodes)
+		solutions := getSolutions(n, n.value)
 		for _, s := range solutions {
-			if len(s) >= 209 {
+			if len(s) >= endSize {
 				fmt.Printf("%d: %s\n", len(s), s)
 			}
 		}
