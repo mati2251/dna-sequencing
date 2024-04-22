@@ -52,42 +52,31 @@ func nodes(lines []string) []*node {
 		n.next = nextMap[n.value[1:]]
 		n.prev = prevMap[n.value[:len(n.value)-1]]
 	}
-	for _, n := range nodes {
-		for i, next := range n.next {
-			if next.value == n.value {
-				n.next = append(n.next[:i], n.next[i+1:]...)
-				for j, prev := range n.prev {
-					if prev.value == n.value {
-						n.prev = append(n.prev[:j], n.prev[j+1:]...)
-					}
-				}
-			}
-		}
-	}
 	return nodes
 }
 
-func merge(a *node) {
+
+func merge(a *node, offset int) {
 	if len(a.prev) == 1 {
 		if len(a.prev[0].next) == 1 {
-			merge(a.prev[0])
+			merge(a.prev[0], offset)
 			return
 		}
 	}
 	if len(a.next) == 1 {
 		if len(a.next[0].prev) == 1 {
 			next := a.next[0]
-			a.value = a.value + next.value[wordSize-1:]
+			a.value = a.value + next.value[wordSize-1-offset:]
 			a.next = next.next
 			next.used = true
-			merge(a)
+			merge(a, offset)
 			return
 		}
 	}
 	if len(a.next) > 0 {
 		for _, n := range a.next {
 			for i, p := range n.prev {
-				if p.value[:wordSize] == a.value[len(a.value)-wordSize:] {
+				if p.value[:wordSize-offset] == a.value[len(a.value)-wordSize+offset:] {
 					n.prev[i] = a
 				}
 			}
@@ -96,33 +85,34 @@ func merge(a *node) {
 	a.merged = true
 }
 
-func mergeAll(nodes []*node, new_nodes []*node) []*node {
+func mergeAll(nodes []*node, new_nodes []*node, offset int) []*node {
 	if len(nodes) == 0 {
 		return new_nodes
 	}
 	if nodes[0].merged {
 		new_nodes = append(new_nodes, nodes[0])
 		nodes = nodes[1:]
-		return mergeAll(nodes, new_nodes)
+		return mergeAll(nodes, new_nodes, offset)
 	}
 	if nodes[0].used {
 		nodes = nodes[1:]
-		return mergeAll(nodes, new_nodes)
+		return mergeAll(nodes, new_nodes, offset)
 	}
-	merge(nodes[0])
-	return mergeAll(nodes, new_nodes)
+	merge(nodes[0], offset)
+	return mergeAll(nodes, new_nodes, offset)
 }
 
 func resetUsed(nodes []*node) {
 	for _, n := range nodes {
 		n.used = false
+    n.merged = false
 	}
 }
 
 func getStarted(nodes []*node) []*node {
 	started := []*node{}
 	for _, n := range nodes {
-		if len(n.prev) == 0 && len(n.next) > 0 {
+		if len(n.prev) == 0 {
 			started = append(started, n)
 		}
 	}
@@ -233,15 +223,17 @@ func main() {
 		printNodes(nodes)
 	}
 
-	merged_nodes := mergeAll(nodes, []*node{})
+	merged_nodes := mergeAll(nodes, []*node{}, 0)
 
 	if debug {
 		fmt.Println("Merging...")
 		printNodes(merged_nodes)
 	}
 
-	for offset := 0; offset != wordSize; offset++ {
+	for offset := 1; offset != wordSize - 1; offset++ {
 		incresaOffset(merged_nodes, offset)
+    resetUsed(merged_nodes)
+    merged_nodes = mergeAll(merged_nodes, []*node{}, offset)
 		started := getStarted(merged_nodes)
 		if debug {
 			fmt.Printf("Iteration %d\n", offset)
@@ -258,6 +250,7 @@ func main() {
 			for _, s := range solutions {
 				if len(s) >= endSize {
 					fmt.Printf("Solution %d: %s\n", len(s), s)
+          return 
 				}
 			}
 		}
