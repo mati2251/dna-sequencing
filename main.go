@@ -15,6 +15,7 @@ type node struct {
 	prev   []*node
 	used   bool
 	merged bool
+	count  int
 }
 
 func readLines(filename string) ([]string, error) {
@@ -37,7 +38,7 @@ func nodes(lines []string) []*node {
 	nextMap := make(map[string][]*node)
 	nodes := []*node{}
 	for _, line := range lines {
-		new_node := &node{value: line, used: false, merged: false}
+		new_node := &node{value: line, used: false, merged: false, count: 1}
 		nodes = append(nodes, new_node)
 		if _, ok := prevMap[line[1:]]; !ok {
 			prevMap[line[1:]] = []*node{}
@@ -55,7 +56,6 @@ func nodes(lines []string) []*node {
 	return nodes
 }
 
-
 func merge(a *node, offset int) {
 	if len(a.prev) == 1 {
 		if len(a.prev[0].next) == 1 {
@@ -69,6 +69,7 @@ func merge(a *node, offset int) {
 			a.value = a.value + next.value[wordSize-1-offset:]
 			a.next = next.next
 			next.used = true
+			a.count += next.count
 			merge(a, offset)
 			return
 		}
@@ -105,7 +106,7 @@ func mergeAll(nodes []*node, new_nodes []*node, offset int) []*node {
 func resetUsed(nodes []*node) {
 	for _, n := range nodes {
 		n.used = false
-    n.merged = false
+		n.merged = false
 	}
 }
 
@@ -119,8 +120,13 @@ func getStarted(nodes []*node) []*node {
 	return started
 }
 
-func getSolutions(n *node, curr string) []string {
-	solutions := []string{}
+type solution struct {
+	value string
+	count int
+}
+
+func getSolutions(n *node, curr solution) []solution {
+	solutions := []solution{}
 	n.used = true
 	if len(n.next) == 0 {
 		n.used = false
@@ -130,8 +136,12 @@ func getSolutions(n *node, curr string) []string {
 		if next.used {
 			solutions = append(solutions, curr)
 		} else {
-			new_curr := curr + next.value[wordSize-1:]
-			solutions = append(solutions, getSolutions(next, new_curr)...)
+			for i := wordSize - 1; i > 0; i-- {
+				if n.value[len(n.value)-i:] == next.value[:i] {
+					new_curr := solution{curr.value + next.value[i:], curr.count + next.count}
+					solutions = append(solutions, getSolutions(next, new_curr)...)
+				}
+			}
 		}
 	}
 	n.used = false
@@ -168,21 +178,21 @@ func incresaOffset(nodes []*node, offset int) {
 					add = false
 				}
 			}
-      if add {
-          n.next = append(n.next, next)
-      }
+			if add {
+				n.next = append(n.next, next)
+			}
 		}
-    for _, prev := range prevs {
-      add := true
-      for _, presentPrev := range n.prev {
-        if presentPrev.value == prev.value {
-          add = false
-        }
-      } 
-      if add {
-        n.prev = append(n.prev, prev)
-      }
-    }
+		for _, prev := range prevs {
+			add := true
+			for _, presentPrev := range n.prev {
+				if presentPrev.value == prev.value {
+					add = false
+				}
+			}
+			if add {
+				n.prev = append(n.prev, prev)
+			}
+		}
 	}
 }
 
@@ -223,21 +233,14 @@ func main() {
 		printNodes(nodes)
 	}
 
-	merged_nodes := mergeAll(nodes, []*node{}, 0)
-
-	if debug {
-		fmt.Println("Merging...")
-		printNodes(merged_nodes)
-	}
-
-	for offset := 1; offset != wordSize - 1; offset++ {
-		incresaOffset(merged_nodes, offset)
-    resetUsed(merged_nodes)
-    merged_nodes = mergeAll(merged_nodes, []*node{}, offset)
-		started := getStarted(merged_nodes)
+	for offset := 0; offset != 1; offset++ {
+		incresaOffset(nodes, offset)
+		resetUsed(nodes)
+		nodes = mergeAll(nodes, []*node{}, offset)
+		started := getStarted(nodes)
 		if debug {
 			fmt.Printf("Iteration %d\n", offset)
-			printNodes(merged_nodes)
+			printNodes(nodes)
 			fmt.Println("Started..")
 			for _, n := range started {
 				fmt.Println(n.value)
@@ -246,11 +249,11 @@ func main() {
 
 		for _, n := range started {
 			resetUsed(nodes)
-			solutions := getSolutions(n, n.value)
+			solutions := getSolutions(n, solution{n.value, n.count})
 			for _, s := range solutions {
-				if len(s) >= endSize {
-					fmt.Printf("Solution %d: %s\n", len(s), s)
-          return 
+				if len(s.value) >= endSize {
+					fmt.Printf("Solution %d: %s - %d\n", len(s.value), s.value, s.count)
+					return
 				}
 			}
 		}
