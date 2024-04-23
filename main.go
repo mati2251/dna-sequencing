@@ -211,15 +211,28 @@ func printNodes(nodes []*node) {
 }
 
 func main() {
-	if len(os.Args) != 3 {
-		fmt.Printf("Usage: %s <filename> <end-size>", os.Args[0])
+	if len(os.Args) < 4 {
+		fmt.Printf("Usage: %s <filename> <min-size> <max-size> <used>", os.Args[0])
 		return
 	}
 	filename := os.Args[1]
-	endSize, err := strconv.Atoi(os.Args[2])
+	minSize, err := strconv.Atoi(os.Args[2])
 	if err != nil {
 		fmt.Println("Error parsing end-size")
 		return
+	}
+	maxSize, err := strconv.Atoi(os.Args[3])
+	if err != nil {
+		fmt.Println("Error parsing end-size")
+		return
+	}
+	var used int = 0
+	if len(os.Args) == 5 {
+		used, err = strconv.Atoi(os.Args[4])
+		if err != nil {
+			fmt.Println("Error parsing used")
+			return
+		}
 	}
 	lines, err := readLines(filename)
 	if err != nil {
@@ -233,7 +246,7 @@ func main() {
 		printNodes(nodes)
 	}
 
-	for offset := 0; offset != 1; offset++ {
+	for offset := 0; offset != wordSize-1; offset++ {
 		incresaOffset(nodes, offset)
 		resetUsed(nodes)
 		nodes = mergeAll(nodes, []*node{}, offset)
@@ -246,16 +259,21 @@ func main() {
 				fmt.Println(n.value)
 			}
 		}
-
+		breakCon := false
 		for _, n := range started {
 			resetUsed(nodes)
 			solutions := getSolutions(n, solution{n.value, n.count})
 			for _, s := range solutions {
-				if len(s.value) >= endSize {
-					fmt.Printf("Solution %d: %s - %d\n", len(s.value), s.value, s.count)
-					return
+				if len(s.value) >= minSize && len(s.value) <= maxSize {
+					if used == 0 || s.count == used {
+						fmt.Printf("Solution it - %d size - %d used - %d: %s\n", offset, len(s.value), s.count, s.value)
+						breakCon = true
+					}
 				}
 			}
+		}
+		if breakCon {
+			return
 		}
 	}
 }
