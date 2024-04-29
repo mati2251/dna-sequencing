@@ -117,6 +117,13 @@ func getStarted(nodes []*node) []*node {
 			started = append(started, n)
 		}
 	}
+	if len(started) == 0 && len(nodes) > 0 {
+    for _, n := range nodes {
+      if len(n.next) != 0 {
+        started = append(started, n)
+      }
+    }
+	}
 	return started
 }
 
@@ -178,6 +185,9 @@ func incresaOffset(nodes []*node, offset int) {
 					add = false
 				}
 			}
+			if n.value == next.value {
+				add = false
+			}
 			if add {
 				n.next = append(n.next, next)
 			}
@@ -188,6 +198,9 @@ func incresaOffset(nodes []*node, offset int) {
 				if presentPrev.value == prev.value {
 					add = false
 				}
+			}
+			if n.value == prev.value {
+				add = false
 			}
 			if add {
 				n.prev = append(n.prev, prev)
@@ -259,7 +272,6 @@ func main() {
 				fmt.Println(n.value)
 			}
 		}
-		breakCon := false
 		for _, n := range started {
 			resetUsed(nodes)
 			solutions := getSolutions(n, solution{n.value, n.count})
@@ -267,13 +279,10 @@ func main() {
 				if len(s.value) >= minSize && len(s.value) <= maxSize {
 					if used == 0 || s.count == used {
 						fmt.Printf("Solution it - %d size - %d used - %d: %s\n", offset, len(s.value), s.count, s.value)
-						breakCon = true
+            return
 					}
 				}
 			}
-		}
-		if breakCon {
-			return
 		}
 	}
 }
